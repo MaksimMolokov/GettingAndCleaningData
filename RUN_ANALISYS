@@ -1,0 +1,82 @@
+
+setwd("C:/DATA/coursera/getting-and-cleaning-data/project/")
+library(data.table)
+library(dtplyr)
+#download file zip
+URLlink <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
+link <- 'C:/DATA/coursera/getting-and-cleaning-data/project/20Dataset.zip'
+f <- file.path(getwd(), "20Dataset.zip")
+download.file(URLlink, f)
+unzip(zipfile="20Dataset.zip",exdir="./data")
+#скачиваем файл через download, распаковываем его
+#считываем файлы из папки 
+#
+featN <- read.table("UCI HAR Dataset/features.txt")
+activitL <- read.table("UCI HAR Dataset/activity_labels.txt", header = FALSE)
+subTr <- read.table("UCI HAR Dataset/train/subject_train.txt", header = FALSE)
+activTr <- read.table("UCI HAR Dataset/train/y_train.txt", header = FALSE)
+featTr <- read.table("UCI HAR Dataset/train/X_train.txt", header = FALSE)
+subTest <- read.table("UCI HAR Dataset/test/subject_test.txt", header = FALSE)
+activTest <- read.table("UCI HAR Dataset/test/y_test.txt", header = FALSE)
+featTest <- read.table("UCI HAR Dataset/test/X_test.txt", header = FALSE)
+#2 объединяем файлы по категориям саб, эктив, фьюче
+sub <- rbind(subTr, subTest)
+activ <- rbind(activTr, activTest)
+feat <- rbind(featTr, featTest)
+colnames(feat) <- t(featN[2])
+#проверяем строки получившихся файлов в начале и в конце чтобы не октрывать весь массив целиком
+head(sub,10)
+tail(sub,10)
+
+head(activ,10)
+tail(activ,10)
+
+head(feat,10)
+tail(feat,10)
+
+colnames(activ) <- "Activity"
+colnames(sub) <- "Subject"
+AlDat <- cbind(feat,activ,sub)
+"биндим полученные данные в кучу
+colMeanSTD <- grep(".*Mean.*|.*Std.*", names(AlDat), ignore.case=TRUE)
+reqCol <- c(colMeanSTD, 562, 563)
+dim(AlDat)
+Data <- AlDat[,reqCol]
+dim(Data)
+
+#3 преобразуем полученные данные 
+Data$Activity
+Data$Activity <- as.character(Data$Activity)
+for (i in 1:6){
+  Data$Activity[Data$Activity == i] <- as.character(activitL[i,2])
+}
+Data$Activity
+Data$Activity <- as.factor(Data$Activity)
+Data$Activity
+
+
+names(Data)
+
+names(Data)<-gsub("Acc", "Accelerometer", names(Data))
+names(Data)<-gsub("Gyro", "Gyroscope", names(Data))
+names(Data)<-gsub("BodyBody", "Body", names(Data))
+names(Data)<-gsub("Mag", "Magnitude", names(Data))
+names(Data)<-gsub("^t", "Time", names(Data))
+names(Data)<-gsub("^f", "Frequency", names(Data))
+names(Data)<-gsub("tBody", "TimeBody", names(Data))
+names(Data)<-gsub("-mean()", "Mean", names(Data), ignore.case = TRUE)
+names(Data)<-gsub("-std()", "STD", names(Data), ignore.case = TRUE)
+names(Data)<-gsub("-freq()", "Frequency", names(Data), ignore.case = TRUE)
+names(Data)<-gsub("angle", "Angle", names(Data))
+names(Data)<-gsub("gravity", "Gravity", names(Data))
+
+#для корректировки имен производим заменю соркащений на полные названия
+names(Data)
+
+
+#5 Part 5 - From the data set in step 4, creates a second, independent tidy data set with the average of each variable for each activity and each subject
+Data$Subject <- as.factor(Data$Subject)
+Data <- data.table(Data)
+tidyData <- aggregate(. ~Subject + Activity, Data, mean)
+tidyData <- tidyData[order(tidyData$Subject,tidyData$Activity),]
+write.table(tidyData, file = "Tidy.txt", row.names = FALSE)
